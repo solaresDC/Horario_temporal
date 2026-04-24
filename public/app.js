@@ -5,6 +5,9 @@ const START_MIN = 330;            // 5:30
 const END_MIN   = 24 * 60;        // 24:00
 const TOTAL_MIN = END_MIN - START_MIN;
 
+// Hardcoded for Step 5. Step 6 will compute from today's date.
+let currentWeekId = '2026-04-13';
+
 // Read pixel-per-hour from CSS so we have ONE source of truth
 function pxPerMin(){
   const cs = getComputedStyle(document.documentElement);
@@ -423,24 +426,7 @@ const panelBody = document.getElementById('panelBody');
 const saveIndicator = document.getElementById('saveIndicator');
 
 let notesData = [];
-async function loadNotes(){
-  try {
-    if (window.storage){
-      const r = await window.storage.get('schedule:notes');
-      if (r && r.value) notesData = JSON.parse(r.value);
-    }
-  } catch(e){ notesData = []; }
-}
-let saveTimer = null;
-async function saveNotes(){
-  clearTimeout(saveTimer);
-  saveTimer = setTimeout(async () => {
-    try {
-      if (window.storage) await window.storage.set('schedule:notes', JSON.stringify(notesData));
-      flashSaved();
-    } catch(e){ console.error(e); }
-  }, 300);
-}
+
 function flashSaved(){
   saveIndicator.classList.add('show');
   setTimeout(() => saveIndicator.classList.remove('show'), 900);
@@ -467,8 +453,8 @@ function renderNotes(){
   panelBody.appendChild(composer);
 
   const sorted = [...notesData].sort((a, b) => {
-    if (a.pinned !== b.pinned) return b.pinned - a.pinned;
-    return (b.createdAt || 0) - (a.createdAt || 0);
+    if (a.pinned !== b.pinned) return (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0);
+    return (b.created_at || 0) - (a.created_at || 0);
   });
 
   if (sorted.length === 0){
@@ -490,7 +476,7 @@ function renderNotes(){
         <div class="note-body">
           <div class="note-text">${escapeHtml(n.text).replace(/\n/g, '<br>')}</div>
           <div class="note-meta">
-            <span class="note-date">${formatNoteDate(n.createdAt)}</span>
+            <span class="note-date">${formatNoteDate(n.created_at)}</span>
             ${n.pinned ? '<span class="note-pinned-label">Pinned</span>' : ''}
           </div>
         </div>
@@ -510,16 +496,21 @@ function renderNotes(){
 
   const input = document.getElementById('noteInput');
   const addBtn = document.getElementById('noteAddBtn');
-  const submit = () => {
+  const submit = async () => {
     const v = input.value.trim();
     if (!v) return;
-    notesData.push({
-      id: 'n_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
-      text: v, pinned: false, createdAt: Date.now()
-    });
-    input.value = '';
-    saveNotes(); renderNotes();
-    setTimeout(() => { const ni = document.getElementById('noteInput'); if (ni) ni.focus(); }, 0);
+    addBtn.disabled = true;
+    try {
+      const created = await window.api.addNote(currentWeekId, v);
+      notesData.push(created);
+      input.value = '';
+      renderNotes();
+      flashSaved();
+      setTimeout(() => { const ni = document.getElementById('noteInput'); if (ni) ni.focus(); }, 0);
+    } catch(e){
+      console.error('addNote failed', e);
+      addBtn.disabled = false;
+    }
   };
   addBtn.addEventListener('click', submit);
   input.addEventListener('keydown', e => {
@@ -541,17 +532,29 @@ function closeNotes(){
 document.getElementById('openNotes').addEventListener('click', openNotes);
 document.getElementById('closePanel').addEventListener('click', closeNotes);
 scrim.addEventListener('click', closeNotes);
-panelBody.addEventListener('click', e => {
+panelBody.addEventListener('click', async (e) => {
   const pin = e.target.closest('.note-pin');
   if (pin){
     const n = notesData.find(x => x.id === pin.dataset.id);
-    if (n){ n.pinned = !n.pinned; saveNotes(); renderNotes(); }
+    if (!n) return;
+    const next = !n.pinned;
+    try {
+      await window.api.updateNote(n.id, { pinned: next });
+      n.pinned = next;
+      renderNotes();
+      flashSaved();
+    } catch(err){ console.error('updateNote failed', err); }
     return;
   }
   const del = e.target.closest('.note-delete');
   if (del){
-    notesData = notesData.filter(x => x.id !== del.dataset.id);
-    saveNotes(); renderNotes();
+    const id = del.dataset.id;
+    try {
+      await window.api.deleteNote(id);
+      notesData = notesData.filter(x => x.id !== id);
+      renderNotes();
+      flashSaved();
+    } catch(err){ console.error('deleteNote failed', err); }
   }
 });
 
@@ -606,22 +609,9 @@ let activeTopicCat = null;
 
 async function loadTopics(){
   try {
-    if (window.storage){
-      const r = await window.storage.get('schedule:topics');
-      if (r && r.value) topicsData = JSON.parse(r.value);
-    }
-  } catch(e){ topicsData = {}; }
+    topicsData = await window.api.getTopics();
+  } catch(e){ console.warn('topics load failed', e); topicsData = {}; }
   TOPIC_CATEGORIES.forEach(c => { if (!topicsData[c.key]) topicsData[c.key] = []; });
-}
-let topicsSaveTimer = null;
-async function saveTopics(){
-  clearTimeout(topicsSaveTimer);
-  topicsSaveTimer = setTimeout(async () => {
-    try {
-      if (window.storage) await window.storage.set('schedule:topics', JSON.stringify(topicsData));
-      flashSaved();
-    } catch(e){ console.error(e); }
-  }, 300);
 }
 function renderTopicGroups(){
   topicGroupsEl.innerHTML = '';
@@ -711,28 +701,36 @@ document.getElementById('closeTopicDetail').addEventListener('click', closeTopic
 topicsScrim.addEventListener('click', closeTopicsModal);
 topicDetailScrim.addEventListener('click', closeTopicDetail);
 
-function addTopic(){
+async function addTopic(){
   if (!activeTopicCat) return;
   const v = topicInput.value.trim();
   if (!v) return;
-  if (!topicsData[activeTopicCat]) topicsData[activeTopicCat] = [];
-  topicsData[activeTopicCat].push({
-    id: 'tp_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
-    text: v
-  });
-  topicInput.value = '';
-  saveTopics(); renderTopicList();
-  topicInput.focus();
+  topicAddBtn.disabled = true;
+  try {
+    const created = await window.api.addTopic(activeTopicCat, v);
+    if (!topicsData[activeTopicCat]) topicsData[activeTopicCat] = [];
+    topicsData[activeTopicCat].push(created);
+    topicInput.value = '';
+    renderTopicList();
+    flashSaved();
+    topicInput.focus();
+  } catch(e){ console.error('addTopic failed', e); }
+  finally { topicAddBtn.disabled = false; }
 }
 topicAddBtn.addEventListener('click', addTopic);
 topicInput.addEventListener('keydown', e => {
   if (e.key === 'Enter'){ e.preventDefault(); addTopic(); }
 });
-topicListEl.addEventListener('click', e => {
+topicListEl.addEventListener('click', async (e) => {
   const del = e.target.closest('.topic-item-delete');
   if (!del || !activeTopicCat) return;
-  topicsData[activeTopicCat] = topicsData[activeTopicCat].filter(t => t.id !== del.dataset.id);
-  saveTopics(); renderTopicList();
+  const id = del.dataset.id;
+  try {
+    await window.api.deleteTopic(id);
+    topicsData[activeTopicCat] = topicsData[activeTopicCat].filter(t => t.id !== id);
+    renderTopicList();
+    flashSaved();
+  } catch(err){ console.error('deleteTopic failed', err); }
 });
 
 document.addEventListener('keydown', e => {
@@ -748,24 +746,13 @@ const versionsModal = document.getElementById('versionsModal');
 const versionsScrim = document.getElementById('versionsScrim');
 const versionListEl = document.getElementById('versionList');
 
-async function loadActiveVersion(){
-  try {
-    if (window.storage){
-      const r = await window.storage.get('schedule:activeVersion');
-      if (r && r.value && SCHEDULE_VERSIONS[r.value]) activeVersion = r.value;
-    }
-  } catch(e){}
-  WEEK = SCHEDULE_VERSIONS[activeVersion].week;
-}
-
 async function setActiveVersion(key){
   if (!SCHEDULE_VERSIONS[key]) return;
   activeVersion = key;
   WEEK = SCHEDULE_VERSIONS[activeVersion].week;
   renderCalendar();
   renderStats();
-  try { if (window.storage) await window.storage.set('schedule:activeVersion', key); } catch(e){}
-  flashSaved();
+  try { await window.api.setVersion(currentWeekId, key); flashSaved(); } catch(e){ console.error('setVersion failed', e); }
   renderVersionList();
 }
 
@@ -823,20 +810,16 @@ function applyTheme(t){
   iconMoon.style.display = (t === 'dark') ? 'none' : 'block';
   iconSun.style.display  = (t === 'dark') ? 'block' : 'none';
 }
-async function loadTheme(){
-  try {
-    if (window.storage){
-      const r = await window.storage.get('schedule:theme');
-      if (r && r.value){ applyTheme(r.value); return; }
-    }
-  } catch(e){}
+function loadTheme(){
+  const t = localStorage.getItem('schedule:theme');
+  if (t){ applyTheme(t); return; }
   applyTheme(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
 }
-themeBtn.addEventListener('click', async () => {
+themeBtn.addEventListener('click', () => {
   const cur = document.documentElement.getAttribute('data-theme') || 'light';
   const next = cur === 'dark' ? 'light' : 'dark';
   applyTheme(next);
-  try { if (window.storage) await window.storage.set('schedule:theme', next); } catch(e){}
+  localStorage.setItem('schedule:theme', next);
 });
 
 /* ================================================================
@@ -844,7 +827,7 @@ themeBtn.addEventListener('click', async () => {
    ================================================================ */
 // Render calendar IMMEDIATELY (synchronously) so it appears even
 // if async storage operations hang or fail.
-applyTheme(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+loadTheme();
 renderCalendar();
 
 // Re-render on resize so any responsive change to --hour-px is honored
@@ -854,27 +837,17 @@ window.addEventListener('resize', () => {
   rzTimer = setTimeout(renderCalendar, 150);
 });
 
-// Load persisted state in the background (theme override + notes + topics + version)
+// Load persisted state in the background
 (async () => {
-  try { await loadTheme(); } catch(e){ console.warn('theme load failed', e); }
-  try { await loadNotes(); } catch(e){ console.warn('notes load failed', e); }
-  try { await loadTopics(); } catch(e){ console.warn('topics load failed', e); }
   try {
-    const before = activeVersion;
-    await loadActiveVersion();
-    if (activeVersion !== before){
+    const week = await window.api.getWeek(currentWeekId);
+    notesData = week.notes || [];
+    if (week.activeVersion && SCHEDULE_VERSIONS[week.activeVersion] && week.activeVersion !== activeVersion){
+      activeVersion = week.activeVersion;
+      WEEK = SCHEDULE_VERSIONS[activeVersion].week;
       renderCalendar();
       renderStats();
     }
-  } catch(e){ console.warn('version load failed', e); }
-  // Seed example topics on first ever load
-  if (topicsData.biz_action && topicsData.biz_action.length === 0){
-    topicsData.biz_action = [
-      {id:'tp_seed_1', text:'Onigiri business'},
-      {id:'tp_seed_2', text:'Santiago business'},
-      {id:'tp_seed_3', text:'Freelance page'},
-      {id:'tp_seed_4', text:'Water project'},
-    ];
-    try { await saveTopics(); } catch(e){}
-  }
+  } catch(e){ console.warn('week load failed', e); }
+  try { await loadTopics(); } catch(e){ console.warn('topics load failed', e); }
 })();
