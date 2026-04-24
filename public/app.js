@@ -5,8 +5,32 @@ const START_MIN = 330;            // 5:30
 const END_MIN   = 24 * 60;        // 24:00
 const TOTAL_MIN = END_MIN - START_MIN;
 
-// Hardcoded for Step 5. Step 6 will compute from today's date.
-let currentWeekId = '2026-04-13';
+/* ================================================================
+   DATE / WEEK HELPERS
+   ================================================================ */
+function mondayOf(date) {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + diff);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+function isoDate(d) { return d.toISOString().slice(0, 10); }
+function shiftWeek(weekId, deltaWeeks) {
+  const d = new Date(weekId + 'T00:00:00');
+  d.setDate(d.getDate() + deltaWeeks * 7);
+  return isoDate(d);
+}
+function formatWeekLabel(weekId) {
+  const monday = new Date(weekId + 'T00:00:00');
+  const friday = new Date(monday); friday.setDate(monday.getDate() + 4);
+  const opts = { month: 'short', day: 'numeric' };
+  const year = friday.getFullYear();
+  return `Week of ${monday.toLocaleDateString('en-US', opts)} – ${friday.toLocaleDateString('en-US', opts)}, ${year}`;
+}
+
+let currentWeekId = isoDate(mondayOf(new Date()));
 
 // Read pixel-per-hour from CSS so we have ONE source of truth
 function pxPerMin(){
@@ -260,8 +284,26 @@ let activeVersion = 'v7';
 let WEEK = SCHEDULE_VERSIONS[activeVersion].week;
 
 const DAY_NAMES = ['Mon','Tue','Wed','Thu','Fri'];
-const DAY_DATES = ['13','14','15','16','17'];
-const TODAY_INDEX = 1; // Tuesday
+let DAY_DATES = ['13','14','15','16','17'];
+let TODAY_INDEX = -1;
+
+function recomputeWeekDerived(){
+  const monday = new Date(currentWeekId + 'T00:00:00');
+  DAY_DATES = [0,1,2,3,4].map(i => {
+    const d = new Date(monday); d.setDate(monday.getDate() + i);
+    return String(d.getDate());
+  });
+  const todayWeekId = isoDate(mondayOf(new Date()));
+  if (currentWeekId === todayWeekId){
+    const dow = new Date().getDay(); // 0 Sun..6 Sat
+    TODAY_INDEX = (dow >= 1 && dow <= 5) ? (dow - 1) : -1;
+  } else {
+    TODAY_INDEX = -1;
+  }
+  const lbl = document.querySelector('.week-label');
+  if (lbl) lbl.textContent = formatWeekLabel(currentWeekId);
+}
+recomputeWeekDerived();
 
 /* ================================================================
    RENDER CALENDAR
@@ -823,10 +865,42 @@ themeBtn.addEventListener('click', () => {
 });
 
 /* ================================================================
+   WEEK NAVIGATION
+   ================================================================ */
+async function loadWeekAndRender(){
+  recomputeWeekDerived();
+  renderCalendar();
+  renderStats();
+  try {
+    const week = await window.api.getWeek(currentWeekId);
+    const v = week.activeVersion;
+    activeVersion = (v && SCHEDULE_VERSIONS[v]) ? v : 'v7';
+    WEEK = SCHEDULE_VERSIONS[activeVersion].week;
+    notesData = week.notes || [];
+    renderCalendar();
+    renderStats();
+    if (panel.classList.contains('open')) renderNotes();
+  } catch(e){ console.warn('week load failed', e); }
+}
+
+document.getElementById('weekPrev').addEventListener('click', async () => {
+  currentWeekId = shiftWeek(currentWeekId, -1);
+  await loadWeekAndRender();
+});
+document.getElementById('weekToday').addEventListener('click', async () => {
+  currentWeekId = isoDate(mondayOf(new Date()));
+  await loadWeekAndRender();
+});
+document.getElementById('weekNext').addEventListener('click', async () => {
+  currentWeekId = shiftWeek(currentWeekId, +1);
+  await loadWeekAndRender();
+});
+
+/* ================================================================
    INIT
    ================================================================ */
 // Render calendar IMMEDIATELY (synchronously) so it appears even
-// if async storage operations hang or fail.
+// if the API is slow or fails.
 loadTheme();
 renderCalendar();
 
@@ -837,17 +911,7 @@ window.addEventListener('resize', () => {
   rzTimer = setTimeout(renderCalendar, 150);
 });
 
-// Load persisted state in the background
 (async () => {
-  try {
-    const week = await window.api.getWeek(currentWeekId);
-    notesData = week.notes || [];
-    if (week.activeVersion && SCHEDULE_VERSIONS[week.activeVersion] && week.activeVersion !== activeVersion){
-      activeVersion = week.activeVersion;
-      WEEK = SCHEDULE_VERSIONS[activeVersion].week;
-      renderCalendar();
-      renderStats();
-    }
-  } catch(e){ console.warn('week load failed', e); }
+  await loadWeekAndRender();
   try { await loadTopics(); } catch(e){ console.warn('topics load failed', e); }
 })();
