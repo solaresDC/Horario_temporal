@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Weekly Schedule</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/styles.css">
+<script defer src="/app.js"></script>
+</head>
+<body>
+
+<!-- ============================================================
+     TOP BAR
+     ============================================================ -->
+<div class="topbar">
+  <div class="topbar-left">
+    <div class="logo">Weekly Schedule</div>
+    <div class="week-label">Week of Apr 13 – 17, 2026</div>
+  </div>
+  <div class="topbar-right">
+    <button class="btn" id="openVersions">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><line x1="9" y1="10" x2="15" y2="10"/><line x1="9" y1="14" x2="13" y2="14"/></svg>
+      Versions
+    </button>
+    <button class="btn" id="openTopics">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+      Topics
+    </button>
+    <button class="btn btn-primary" id="openNotes">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg>
+      Notes
+    </button>
+    <button class="icon-btn" id="toggleTheme" title="Toggle light/dark mode">
+      <svg id="iconMoon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      <svg id="iconSun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+    </button>
+  </div>
+</div>
+
+<!-- ============================================================
+     CALENDAR (single grid: header + body share grid columns)
+     ============================================================ -->
+<div class="cal-wrap">
+  <!-- Single grid container — both header and body cells go in here -->
+  <div class="cal" id="cal"></div>
+</div>
+
+<!-- LEGEND -->
+<div class="legend" id="legend"></div>
+
+<!-- STATS -->
+<div class="stats-row" id="statsRow"></div>
+
+<!-- ============================================================
+     NOTES PANEL
+     ============================================================ -->
+<div class="scrim" id="scrim"></div>
+<aside class="panel" id="panel" aria-hidden="true">
+  <div class="panel-head">
+    <div>
+      <div class="panel-title">Notes</div>
+      <div class="panel-subtitle">Quick reminders & ideas</div>
+    </div>
+    <button class="icon-btn" id="closePanel" aria-label="Close">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="panel-body" id="panelBody"></div>
+</aside>
+
+<!-- ============================================================
+     TOPICS MODAL (grid)
+     ============================================================ -->
+<div class="modal-scrim" id="topicsScrim"></div>
+<div class="modal" id="topicsModal" aria-hidden="true" role="dialog">
+  <div class="modal-head">
+    <div>
+      <div class="modal-title">Topics</div>
+      <div class="modal-subtitle">Pick a category to manage its topics</div>
+    </div>
+    <button class="icon-btn" id="closeTopics" aria-label="Close">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="modal-body">
+    <div class="topic-groups" id="topicGroups"></div>
+  </div>
+</div>
+
+<!-- TOPIC DETAIL SUB-MODAL -->
+<div class="modal-scrim modal-scrim-2" id="topicDetailScrim"></div>
+<div class="modal modal-sm" id="topicDetailModal" aria-hidden="true" role="dialog">
+  <div class="modal-head">
+    <div class="modal-head-with-dot">
+      <div class="topic-detail-dot" id="topicDetailDot"></div>
+      <div>
+        <div class="modal-title" id="topicDetailName"></div>
+        <div class="modal-subtitle">Topics that can fill this time</div>
+      </div>
+    </div>
+    <button class="icon-btn" id="closeTopicDetail" aria-label="Close">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="modal-body">
+    <div class="topic-list" id="topicList"></div>
+    <div class="topic-add">
+      <input type="text" id="topicInput" placeholder="Add a topic…">
+      <button id="topicAddBtn">Add</button>
+    </div>
+  </div>
+</div>
+
+<!-- VERSIONS MODAL -->
+<div class="modal-scrim" id="versionsScrim"></div>
+<div class="modal" id="versionsModal" aria-hidden="true" role="dialog">
+  <div class="modal-head">
+    <div>
+      <div class="modal-title">Schedule Versions</div>
+      <div class="modal-subtitle">Switch between alternate weekly arrangements</div>
+    </div>
+    <button class="icon-btn" id="closeVersions" aria-label="Close">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="modal-body">
+    <div class="version-list" id="versionList"></div>
+  </div>
+</div>
+
+<div class="save-indicator" id="saveIndicator">Saved</div>
+
+</body>
+</html>
