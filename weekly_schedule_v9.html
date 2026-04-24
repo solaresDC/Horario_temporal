@@ -1,0 +1,1611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Weekly Schedule</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ================================================================
+   THEME
+   ================================================================ */
+:root, :root[data-theme="light"]{
+  --ink:#202124;
+  --ink-2:#5f6368;
+  --ink-3:#80868b;
+  --ink-4:#bdc1c6;
+  --line:#dadce0;
+  --line-soft:#e8eaed;
+  --bg:#ffffff;
+  --bg-soft:#f8f9fa;
+  --bg-hover:#f1f3f4;
+  --accent:#1a73e8;
+  --accent-soft:rgba(26,115,232,0.08);
+  --shadow-soft:0 1px 2px rgba(60,64,67,0.08), 0 1px 3px 1px rgba(60,64,67,0.04);
+  --shadow:0 2px 6px 2px rgba(60,64,67,0.12), 0 1px 2px rgba(60,64,67,0.08);
+  --scrim:rgba(32,33,36,0.35);
+}
+:root[data-theme="dark"]{
+  --ink:#e8eaed;
+  --ink-2:#9aa0a6;
+  --ink-3:#80868b;
+  --ink-4:#5f6368;
+  --line:#3c4043;
+  --line-soft:#2a2d31;
+  --bg:#0f1115;
+  --bg-soft:#17191d;
+  --bg-hover:#23262b;
+  --accent:#8ab4f8;
+  --accent-soft:rgba(138,180,248,0.15);
+  --shadow-soft:0 1px 2px rgba(0,0,0,0.3), 0 1px 3px rgba(0,0,0,0.2);
+  --shadow:0 6px 18px rgba(0,0,0,0.45), 0 2px 6px rgba(0,0,0,0.3);
+  --scrim:rgba(0,0,0,0.6);
+}
+
+/* ================================================================
+   BASE
+   ================================================================ */
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;
+  background:var(--bg);
+  color:var(--ink);
+  font-size:13px;
+  line-height:1.4;
+  -webkit-font-smoothing:antialiased;
+  transition:background 0.25s ease, color 0.25s ease;
+}
+
+/* ================================================================
+   TOP BAR
+   ================================================================ */
+.topbar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 24px;
+  border-bottom:1px solid var(--line-soft);
+  background:var(--bg);
+  position:sticky;top:0;z-index:50;
+}
+.topbar-left{display:flex;align-items:baseline;gap:16px}
+.logo{font-weight:600;font-size:16px;letter-spacing:-0.01em;color:var(--ink)}
+.week-label{font-size:13px;color:var(--ink-2)}
+.topbar-right{display:flex;align-items:center;gap:8px}
+.btn{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:7px 14px;font-size:13px;font-weight:500;
+  color:var(--ink);background:transparent;
+  border:1px solid var(--line);border-radius:6px;
+  cursor:pointer;font-family:inherit;
+  transition:all 0.15s ease;
+}
+.btn:hover{background:var(--bg-hover);border-color:var(--ink-4)}
+.btn-primary{background:var(--accent-soft);border-color:transparent;color:var(--accent)}
+.btn-primary:hover{background:rgba(26,115,232,0.14)}
+.btn svg{width:14px;height:14px}
+.icon-btn{
+  width:32px;height:32px;padding:0;
+  display:inline-flex;align-items:center;justify-content:center;
+  background:transparent;border:1px solid var(--line);
+  border-radius:6px;cursor:pointer;color:var(--ink-2);
+  transition:all 0.15s ease;
+}
+.icon-btn:hover{background:var(--bg-hover);color:var(--ink)}
+.icon-btn svg{width:16px;height:16px}
+
+/* ================================================================
+   CALENDAR — BULLETPROOF ALIGNMENT
+   The whole calendar is a single grid. The day-header row and the
+   day-body row use the EXACT SAME grid-template-columns. The time
+   gutter is a fixed pixel width, day columns are equal fractions of
+   the remaining space (using `repeat(5, minmax(0, 1fr))`).
+   Inside each day-body cell, blocks use absolute positioning relative
+   to that cell — never relative to the whole calendar. So column
+   width drift is impossible.
+   ================================================================ */
+
+:root{
+  --time-gutter:64px;
+  --hour-px:90px;            /* every hour is exactly this many pixels tall */
+  --hours-shown:18.5;        /* 5:30 → 24:00 = 18.5 hours */
+  --calendar-height:calc(var(--hour-px) * var(--hours-shown));
+  --start-min:330;           /* 5:30 in minutes-from-midnight */
+}
+
+.cal{
+  /* Single canonical grid — both header and body rely on it */
+  display:grid;
+  grid-template-columns:var(--time-gutter) repeat(5, minmax(0, 1fr));
+  background:var(--bg);
+}
+
+/* ---- Header row (sticky) ---- */
+.cal-head-corner,
+.cal-head-day{
+  border-bottom:1px solid var(--line);
+}
+.cal-head-corner{
+  background:var(--bg);
+  border-right:1px solid var(--line-soft);
+}
+.cal-head-day{
+  text-align:center;
+  padding:12px 8px 10px;
+  border-right:1px solid var(--line-soft);
+  background:var(--bg);
+}
+.cal-head-day:last-child{border-right:none}
+.cal-head-name{
+  font-size:11px;color:var(--ink-2);
+  text-transform:uppercase;letter-spacing:0.08em;
+  font-weight:500;
+}
+.cal-head-num{
+  font-size:22px;font-weight:400;color:var(--ink);
+  margin-top:2px;letter-spacing:-0.01em;
+  display:inline-block;
+}
+.cal-head-day.today .cal-head-num{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:34px;height:34px;
+  background:var(--accent);color:#fff;
+  border-radius:50%;font-size:16px;
+  margin-top:0;
+}
+:root[data-theme="dark"] .cal-head-day.today .cal-head-num{
+  color:#0f1115;font-weight:500;
+}
+
+/* ---- Body row ---- */
+.cal-body-cell{
+  height:var(--calendar-height);
+  position:relative;        /* anchor for absolutely-positioned children */
+  border-right:1px solid var(--line-soft);
+}
+.cal-body-cell:last-child{border-right:none}
+
+/* Time gutter cell */
+.cal-gutter{
+  background:var(--bg);
+  border-right:1px solid var(--line-soft);
+}
+.gutter-tick{
+  position:absolute;
+  right:8px;
+  font-size:10px;
+  color:var(--ink-3);
+  line-height:1;
+  transform:translateY(-50%);
+  background:var(--bg);
+  padding:2px 0;
+  white-space:nowrap;
+  font-feature-settings:'tnum';
+}
+
+/* Hour lines drawn inside each day cell */
+.hour-line{
+  position:absolute;left:0;right:0;
+  border-top:1px solid var(--line-soft);
+  pointer-events:none;
+}
+.hour-line.half{border-top-style:dashed;opacity:0.5}
+
+/* ---- Blocks ---- */
+.block{
+  position:absolute;
+  left:4px;right:4px;
+  border-radius:5px;
+  padding:4px 8px;
+  cursor:pointer;
+  overflow:hidden;
+  border-left:3px solid;
+  box-shadow:var(--shadow-soft);
+  transition:
+    transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1),
+    box-shadow 0.25s cubic-bezier(0.2, 0.8, 0.2, 1),
+    height 0.35s cubic-bezier(0.2, 0.8, 0.2, 1),
+    z-index 0s 0.35s;
+  will-change:transform, box-shadow;
+}
+.block:hover{
+  filter:brightness(0.97);
+  box-shadow:var(--shadow);
+  z-index:8;
+}
+:root[data-theme="dark"] .block{
+  background:color-mix(in srgb, var(--block-bg) 18%, var(--bg-soft)) !important;
+  color:color-mix(in srgb, var(--block-bd) 85%, #ffffff) !important;
+}
+:root[data-theme="dark"] .block:hover{filter:brightness(1.15)}
+.block-name{
+  font-size:11px;font-weight:500;line-height:1.25;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+  overflow:hidden;
+}
+.block-time{font-size:10px;opacity:0.7;margin-top:2px}
+.block-extra{
+  margin-top:8px;padding-top:8px;
+  border-top:1px solid rgba(0,0,0,0.08);
+  font-size:11px;line-height:1.5;
+  opacity:0;transition:opacity 0.2s ease 0.15s;
+  pointer-events:none;
+}
+:root[data-theme="dark"] .block-extra{border-top-color:var(--line)}
+.block-extra-row{
+  display:flex;justify-content:space-between;align-items:baseline;
+  margin-bottom:4px;
+}
+.block-extra-row:last-child{margin-bottom:0}
+.block-extra-label{
+  font-size:9px;text-transform:uppercase;letter-spacing:0.06em;
+  opacity:0.65;font-weight:500;
+}
+/* expanded */
+.block.expanded{
+  z-index:30;
+  box-shadow:0 0 0 2px var(--accent), 0 16px 40px rgba(60,64,67,0.18), 0 6px 14px rgba(60,64,67,0.10);
+  transform:scale(1.02);
+  transition:
+    transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1),
+    box-shadow 0.25s cubic-bezier(0.2, 0.8, 0.2, 1),
+    height 0.35s cubic-bezier(0.2, 0.8, 0.2, 1),
+    z-index 0s;
+  overflow:visible;padding:10px 12px;
+}
+.block.expanded .block-extra{opacity:1;pointer-events:auto}
+.block.expanded .block-name{-webkit-line-clamp:unset;font-size:12px}
+.cal.has-expanded .block:not(.expanded){opacity:0.4}
+
+/* ================================================================
+   PAGE LAYOUT WRAPPING
+   ================================================================ */
+.cal-wrap{padding:0 24px 24px;background:var(--bg)}
+
+/* ================================================================
+   LEGEND
+   ================================================================ */
+.legend{
+  display:flex;flex-wrap:wrap;gap:10px 20px;
+  padding:16px 24px 18px;
+  border-top:1px solid var(--line-soft);
+  background:var(--bg);
+}
+.leg{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--ink-2)}
+.leg-sq{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+:root[data-theme="dark"] .leg-sq{
+  background:color-mix(in srgb, var(--leg-bg) 25%, var(--bg-soft)) !important;
+}
+
+/* ================================================================
+   STATS (bottom)
+   ================================================================ */
+.stats-row{
+  display:grid;grid-template-columns:repeat(5,1fr);gap:8px;
+  padding:18px 24px 24px;background:var(--bg);
+  position:relative;
+  border-top:1px solid var(--line-soft);
+}
+.stats-row::before{
+  content:'Deep work total — this week';
+  position:absolute;top:-8px;left:24px;
+  padding:0 8px;font-size:10px;font-weight:500;
+  color:var(--ink-3);text-transform:uppercase;letter-spacing:0.08em;
+  background:var(--bg);
+}
+.stat{
+  padding:10px 14px;background:var(--bg-soft);
+  border:1px solid var(--line-soft);border-radius:6px;
+}
+.stat-label{font-size:11px;color:var(--ink-2);margin-bottom:2px}
+.stat-value{font-size:20px;font-weight:500;color:var(--accent);letter-spacing:-0.02em}
+.stat-sub{font-size:10px;color:var(--ink-3);margin-top:1px}
+
+/* ================================================================
+   NOTES PANEL (slide-in drawer)
+   ================================================================ */
+.scrim{
+  position:fixed;inset:0;background:var(--scrim);
+  opacity:0;pointer-events:none;
+  transition:opacity 0.2s ease;z-index:100;
+  backdrop-filter:blur(2px);
+}
+.scrim.open{opacity:1;pointer-events:auto}
+.panel{
+  position:fixed;top:0;right:0;bottom:0;
+  width:min(440px, 92vw);background:var(--bg);
+  border-left:1px solid var(--line);
+  box-shadow:-8px 0 32px rgba(0,0,0,0.15);
+  transform:translateX(100%);
+  transition:transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  z-index:101;display:flex;flex-direction:column;
+}
+.panel.open{transform:translateX(0)}
+.panel-head{
+  padding:18px 22px 14px;
+  border-bottom:1px solid var(--line-soft);
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+}
+.panel-title{font-size:16px;font-weight:600;color:var(--ink);letter-spacing:-0.01em}
+.panel-subtitle{font-size:12px;color:var(--ink-2);margin-top:2px}
+.panel-body{flex:1;overflow-y:auto;padding:0;display:flex;flex-direction:column}
+
+.note-composer{
+  display:flex;flex-direction:column;gap:8px;
+  padding:16px 22px;background:var(--bg-soft);
+  border-bottom:1px solid var(--line-soft);
+  position:sticky;top:0;z-index:2;
+}
+.note-composer textarea{
+  width:100%;padding:10px 12px;font-size:13px;
+  font-family:inherit;line-height:1.5;
+  background:var(--bg);border:1px solid var(--line);
+  border-radius:6px;color:var(--ink);
+  resize:vertical;min-height:54px;
+  transition:border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.note-composer textarea:focus{
+  outline:none;border-color:var(--accent);
+  box-shadow:0 0 0 3px var(--accent-soft);
+}
+.note-composer textarea::placeholder{color:var(--ink-3)}
+.note-composer button{
+  align-self:flex-end;
+  padding:7px 14px;font-size:12px;font-weight:500;
+  color:#fff;background:var(--accent);
+  border:none;border-radius:5px;cursor:pointer;font-family:inherit;
+  transition:filter 0.15s ease;
+}
+.note-composer button:hover{filter:brightness(1.08)}
+.notes-list{padding:8px 14px 24px;display:flex;flex-direction:column;gap:6px}
+.note{
+  display:flex;align-items:flex-start;gap:4px;
+  padding:12px 10px 12px 14px;
+  background:var(--bg);border:1px solid var(--line-soft);
+  border-radius:6px;
+  transition:border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.note:hover{border-color:var(--line);box-shadow:var(--shadow-soft)}
+.note.pinned{
+  border-left:3px solid var(--accent);
+  padding-left:11px;
+  background:var(--accent-soft);
+}
+.note-body{flex:1;min-width:0}
+.note-text{
+  font-size:13px;color:var(--ink);line-height:1.5;
+  word-break:break-word;white-space:pre-wrap;
+}
+.note-meta{display:flex;align-items:center;gap:8px;margin-top:6px}
+.note-date{font-size:10px;color:var(--ink-3);font-feature-settings:'tnum'}
+.note-pinned-label{
+  font-size:10px;color:var(--accent);font-weight:500;
+  text-transform:uppercase;letter-spacing:0.05em;
+}
+.note-actions{
+  display:flex;flex-direction:column;gap:2px;flex-shrink:0;
+  opacity:0.35;transition:opacity 0.15s ease;
+}
+.note:hover .note-actions, .note.pinned .note-actions{opacity:1}
+.note-btn{
+  width:26px;height:26px;border:none;background:transparent;
+  color:var(--ink-3);cursor:pointer;border-radius:4px;
+  display:flex;align-items:center;justify-content:center;
+  transition:all 0.15s ease;
+}
+.note-btn:hover{background:var(--bg-hover);color:var(--ink)}
+.note-btn.note-pin:hover{color:var(--accent)}
+.note-btn.note-delete:hover{color:#d93025}
+.note-btn svg{width:14px;height:14px}
+.note.pinned .note-pin{color:var(--accent)}
+.notes-empty{
+  flex:1;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  padding:48px 24px;text-align:center;color:var(--ink-3);
+}
+.notes-empty svg{width:40px;height:40px;margin-bottom:14px;opacity:0.5}
+.notes-empty-title{font-size:14px;font-weight:500;color:var(--ink-2);margin-bottom:4px}
+.notes-empty-sub{font-size:12px;line-height:1.5;max-width:240px}
+
+/* ================================================================
+   TOPICS MODAL + DETAIL SUB-MODAL
+   ================================================================ */
+.modal-scrim{
+  position:fixed;inset:0;background:var(--scrim);
+  opacity:0;pointer-events:none;
+  transition:opacity 0.2s ease;z-index:110;
+  backdrop-filter:blur(2px);
+}
+.modal-scrim.open{opacity:1;pointer-events:auto}
+.modal-scrim-2{z-index:120;background:rgba(0,0,0,0.25);backdrop-filter:blur(3px)}
+.modal{
+  position:fixed;top:50%;left:50%;
+  transform:translate(-50%, -48%) scale(0.96);
+  width:min(560px, 92vw);max-height:min(680px, 88vh);
+  background:var(--bg);border:1px solid var(--line);
+  border-radius:12px;
+  box-shadow:0 24px 64px rgba(0,0,0,0.25), 0 8px 16px rgba(0,0,0,0.08);
+  opacity:0;pointer-events:none;
+  transition:opacity 0.2s ease, transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+  z-index:111;display:flex;flex-direction:column;
+}
+.modal.open{
+  opacity:1;pointer-events:auto;
+  transform:translate(-50%, -50%) scale(1);
+}
+.modal.modal-sm{z-index:121;width:min(440px, 92vw);max-height:min(560px, 80vh)}
+.modal-head{
+  padding:18px 22px 14px;
+  border-bottom:1px solid var(--line-soft);
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  flex-shrink:0;
+}
+.modal-head-with-dot{display:flex;align-items:flex-start;gap:10px}
+.modal-title{font-size:16px;font-weight:600;color:var(--ink);letter-spacing:-0.01em}
+.modal-subtitle{font-size:12px;color:var(--ink-2);margin-top:2px}
+.modal-body{flex:1;overflow-y:auto;padding:18px 22px 22px}
+
+.topic-groups{display:flex;flex-direction:column;gap:18px}
+.topic-group{display:flex;flex-direction:column;gap:6px}
+.topic-group-label{
+  font-size:10px;font-weight:600;color:var(--ink-3);
+  text-transform:uppercase;letter-spacing:0.08em;
+  padding:0 2px 2px;display:flex;align-items:center;gap:6px;
+}
+.topic-group-label::before{
+  content:'';width:8px;height:2px;
+  background:currentColor;opacity:0.4;border-radius:2px;
+}
+.topic-group-row{display:grid;grid-template-columns:repeat(2, 1fr);gap:6px}
+.topic-group-row-full{grid-template-columns:1fr}
+@media (max-width:480px){
+  .topic-group-row{grid-template-columns:1fr}
+}
+.topic-cat-btn{
+  display:flex;flex-direction:column;align-items:flex-start;gap:6px;
+  padding:12px 14px;background:var(--bg-soft);
+  border:1px solid var(--line-soft);
+  border-left:3px solid;
+  border-radius:6px;cursor:pointer;
+  font-family:inherit;text-align:left;
+  transition:all 0.15s ease;min-height:62px;
+}
+.topic-cat-btn:hover{
+  background:var(--bg-hover);border-color:var(--line);
+  transform:translateY(-1px);box-shadow:var(--shadow-soft);
+}
+.topic-cat-name{font-size:13px;font-weight:500;color:var(--ink);line-height:1.25}
+.topic-cat-count{font-size:11px;color:var(--ink-3);font-feature-settings:'tnum'}
+.topic-detail-dot{
+  width:12px;height:12px;border-radius:3px;flex-shrink:0;margin-top:6px;
+}
+.topic-list{display:flex;flex-direction:column;gap:4px;margin-bottom:12px;min-height:60px}
+.topic-item{
+  display:flex;align-items:center;gap:8px;
+  padding:9px 10px;background:var(--bg);
+  border:1px solid var(--line-soft);border-radius:5px;
+  transition:border-color 0.15s ease;
+}
+.topic-item:hover{border-color:var(--line)}
+.topic-item-text{flex:1;font-size:13px;color:var(--ink);line-height:1.4;word-break:break-word}
+.topic-item-delete{
+  width:24px;height:24px;border:none;background:transparent;
+  color:var(--ink-3);cursor:pointer;border-radius:4px;
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;transition:all 0.15s ease;flex-shrink:0;
+}
+.topic-item:hover .topic-item-delete{opacity:1}
+.topic-item-delete:hover{color:#d93025;background:var(--bg-hover)}
+.topic-item-delete svg{width:13px;height:13px}
+.topic-empty{font-size:12px;color:var(--ink-3);font-style:italic;padding:14px 10px;text-align:center}
+.topic-add{display:flex;gap:6px}
+.topic-add input{
+  flex:1;padding:8px 11px;font-size:13px;
+  background:var(--bg);border:1px solid var(--line);
+  border-radius:5px;color:var(--ink);font-family:inherit;
+  transition:border-color 0.15s ease;
+}
+.topic-add input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.topic-add input::placeholder{color:var(--ink-3)}
+.topic-add button{
+  padding:8px 14px;font-size:12px;font-weight:500;
+  color:#fff;background:var(--accent);
+  border:none;border-radius:5px;cursor:pointer;font-family:inherit;
+  transition:filter 0.15s ease;
+}
+.topic-add button:hover{filter:brightness(1.08)}
+
+/* ================================================================
+   VERSIONS LIST (cards)
+   ================================================================ */
+.version-list{display:flex;flex-direction:column;gap:10px}
+.version-card{
+  display:flex;flex-direction:column;align-items:flex-start;gap:8px;
+  padding:14px 16px;
+  background:var(--bg-soft);
+  border:1px solid var(--line-soft);
+  border-left:3px solid var(--ink-4);
+  border-radius:8px;
+  cursor:pointer;
+  font-family:inherit;text-align:left;width:100%;
+  transition:all 0.15s ease;
+}
+.version-card:hover{
+  background:var(--bg-hover);
+  border-color:var(--line);
+  border-left-color:var(--accent);
+  transform:translateY(-1px);
+  box-shadow:var(--shadow-soft);
+}
+.version-card.active{
+  background:var(--accent-soft);
+  border-color:transparent;
+  border-left-color:var(--accent);
+}
+.version-card-head{
+  display:flex;align-items:center;justify-content:space-between;
+  width:100%;gap:10px;
+}
+.version-card-title{
+  font-size:14px;font-weight:600;color:var(--ink);letter-spacing:-0.01em;
+}
+.version-card-badge{
+  font-size:10px;font-weight:600;color:var(--accent);
+  text-transform:uppercase;letter-spacing:0.06em;
+  padding:3px 8px;background:var(--bg);
+  border:1px solid var(--accent);border-radius:10px;
+  display:none;
+}
+.version-card.active .version-card-badge{display:inline-block}
+.version-card-tagline{
+  font-size:12px;color:var(--ink-2);font-weight:500;
+}
+.version-card-desc{
+  font-size:12px;color:var(--ink-2);line-height:1.5;
+}
+.version-card-highlights{
+  display:flex;flex-direction:column;gap:3px;
+  margin-top:2px;width:100%;
+}
+.version-card-highlight{
+  font-size:11px;color:var(--ink-2);
+  display:flex;align-items:flex-start;gap:6px;
+  padding:3px 0;
+}
+.version-card-highlight::before{
+  content:'→';color:var(--accent);font-weight:600;flex-shrink:0;
+}
+
+/* ================================================================
+   SAVE INDICATOR
+   ================================================================ */
+.save-indicator{
+  position:fixed;bottom:16px;right:16px;
+  padding:8px 14px;background:var(--bg);
+  border:1px solid var(--line);border-radius:6px;
+  font-size:11px;color:var(--ink-2);box-shadow:var(--shadow);
+  opacity:0;transform:translateY(8px);
+  transition:all 0.2s ease;z-index:200;pointer-events:none;
+}
+.save-indicator.show{opacity:1;transform:translateY(0)}
+
+/* ================================================================
+   RESPONSIVE
+   ================================================================ */
+@media (max-width:700px){
+  :root{--time-gutter:48px;--hour-px:72px}
+  .cal-wrap{padding:0 12px 16px}
+  .stats-row{padding:14px 12px 18px}
+  .stats-row::before{left:12px}
+  .topbar{padding:12px 14px}
+}
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     TOP BAR
+     ============================================================ -->
+<div class="topbar">
+  <div class="topbar-left">
+    <div class="logo">Weekly Schedule</div>
+    <div class="week-label">Week of Apr 13 – 17, 2026</div>
+  </div>
+  <div class="topbar-right">
+    <button class="btn" id="openVersions">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><line x1="9" y1="10" x2="15" y2="10"/><line x1="9" y1="14" x2="13" y2="14"/></svg>
+      Versions
+    </button>
+    <button class="btn" id="openTopics">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+      Topics
+    </button>
+    <button class="btn btn-primary" id="openNotes">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg>
+      Notes
+    </button>
+    <button class="icon-btn" id="toggleTheme" title="Toggle light/dark mode">
+      <svg id="iconMoon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      <svg id="iconSun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+    </button>
+  </div>
+</div>
+
+<!-- ============================================================
+     CALENDAR (single grid: header + body share grid columns)
+     ============================================================ -->
+<div class="cal-wrap">
+  <!-- Single grid container — both header and body cells go in here -->
+  <div class="cal" id="cal"></div>
+</div>
+
+<!-- LEGEND -->
+<div class="legend" id="legend"></div>
+
+<!-- STATS -->
+<div class="stats-row" id="statsRow"></div>
+
+<!-- ============================================================
+     NOTES PANEL
+     ============================================================ -->
+<div class="scrim" id="scrim"></div>
+<aside class="panel" id="panel" aria-hidden="true">
+  <div class="panel-head">
+    <div>
+      <div class="panel-title">Notes</div>
+      <div class="panel-subtitle">Quick reminders & ideas</div>
+    </div>
+    <button class="icon-btn" id="closePanel" aria-label="Close">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="panel-body" id="panelBody"></div>
+</aside>
+
+<!-- ============================================================
+     TOPICS MODAL (grid)
+     ============================================================ -->
+<div class="modal-scrim" id="topicsScrim"></div>
+<div class="modal" id="topicsModal" aria-hidden="true" role="dialog">
+  <div class="modal-head">
+    <div>
+      <div class="modal-title">Topics</div>
+      <div class="modal-subtitle">Pick a category to manage its topics</div>
+    </div>
+    <button class="icon-btn" id="closeTopics" aria-label="Close">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="modal-body">
+    <div class="topic-groups" id="topicGroups"></div>
+  </div>
+</div>
+
+<!-- TOPIC DETAIL SUB-MODAL -->
+<div class="modal-scrim modal-scrim-2" id="topicDetailScrim"></div>
+<div class="modal modal-sm" id="topicDetailModal" aria-hidden="true" role="dialog">
+  <div class="modal-head">
+    <div class="modal-head-with-dot">
+      <div class="topic-detail-dot" id="topicDetailDot"></div>
+      <div>
+        <div class="modal-title" id="topicDetailName"></div>
+        <div class="modal-subtitle">Topics that can fill this time</div>
+      </div>
+    </div>
+    <button class="icon-btn" id="closeTopicDetail" aria-label="Close">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="modal-body">
+    <div class="topic-list" id="topicList"></div>
+    <div class="topic-add">
+      <input type="text" id="topicInput" placeholder="Add a topic…">
+      <button id="topicAddBtn">Add</button>
+    </div>
+  </div>
+</div>
+
+<!-- VERSIONS MODAL -->
+<div class="modal-scrim" id="versionsScrim"></div>
+<div class="modal" id="versionsModal" aria-hidden="true" role="dialog">
+  <div class="modal-head">
+    <div>
+      <div class="modal-title">Schedule Versions</div>
+      <div class="modal-subtitle">Switch between alternate weekly arrangements</div>
+    </div>
+    <button class="icon-btn" id="closeVersions" aria-label="Close">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="modal-body">
+    <div class="version-list" id="versionList"></div>
+  </div>
+</div>
+
+<div class="save-indicator" id="saveIndicator">Saved</div>
+
+<script>
+/* ================================================================
+   CONSTANTS
+   ================================================================ */
+const START_MIN = 330;            // 5:30
+const END_MIN   = 24 * 60;        // 24:00
+const TOTAL_MIN = END_MIN - START_MIN;
+
+// Read pixel-per-hour from CSS so we have ONE source of truth
+function pxPerMin(){
+  const cs = getComputedStyle(document.documentElement);
+  const hourPx = parseFloat(cs.getPropertyValue('--hour-px')) || 62;
+  return hourPx / 60;
+}
+
+function tm(s){const[h,m]=s.split(':').map(Number);return h*60+m}
+function fd(d){const h=Math.floor(d/60),m=d%60;return h&&m?`${h}h ${m}m`:h?`${h}h`:`${m}m`}
+function fe(t,d){const e=tm(t)+d,h=Math.floor(e/60),m=e%60;return`${h}:${String(m).padStart(2,'0')}`}
+
+/* ================================================================
+   COLOR PALETTE
+   ================================================================ */
+const TY = {
+  deep:    {bg:'#e8f0fe', bd:'#1a73e8', tx:'#174ea6', lb:'Deep focus'},
+  tools:   {bg:'#fef7e0', bd:'#f9ab00', tx:'#5f4100', lb:'Tool research'},
+  lang:    {bg:'#e6f4ea', bd:'#188038', tx:'#0d652d', lb:'Language / learning'},
+  admin:   {bg:'#f1f3f4', bd:'#5f6368', tx:'#3c4043', lb:'Admin / flex'},
+  body:    {bg:'#fce8e6', bd:'#d93025', tx:'#a50e0e', lb:'Body / exercise'},
+  recovery:{bg:'#f8f9fa', bd:'#9aa0a6', tx:'#5f6368', lb:'Recovery / life'},
+  relation:{bg:'#fce8f1', bd:'#d01884', tx:'#8e0e5c', lb:'Relationship'},
+  fixed:   {bg:'#fff4c2', bd:'#f9ab00', tx:'#5f4100', lb:'Fixed meeting'},
+  mind:    {bg:'#e8f5e9', bd:'#34a853', tx:'#0d652d', lb:'Meditation'},
+  read:    {bg:'#fde7d3', bd:'#e8710a', tx:'#8a4200', lb:'Reading'},
+  commute: {bg:'#f1f3f4', bd:'#9aa0a6', tx:'#5f6368', lb:'Commute / prep'},
+};
+
+/* ================================================================
+   SCHEDULE DATA
+   ================================================================ */
+const MORNING = [
+  {t:'6:00', l:'Wake — news / music / phone + prep breakfast', y:'recovery', d:60},
+  {t:'7:00', l:'Get ready + commute to pool', y:'commute', d:30},
+  {t:'7:30', l:'Swim', y:'body', d:60},
+  {t:'8:30', l:'Shower + commute back', y:'commute', d:30},
+  {t:'9:00', l:'Eat breakfast', y:'recovery', d:30},
+  {t:'9:30', l:'Get ready / settle in', y:'commute', d:30},
+];
+const NIGHT = (s) => {
+  const t1 = fe(s, 110), t2 = fe(t1, 30);
+  return [
+    {t:s,  l:'Night exercise + shower', y:'body',  d:110},
+    {t:t1, l:'Reading',                  y:'read',  d:30},
+    {t:t2, l:'Meditation',               y:'mind',  d:15},
+  ];
+};
+
+/* Shared days that don't change across variants */
+const MONDAY_BASE = [...MORNING,
+  {t:'10:00', l:'Job applications', y:'deep', d:90, cat:'job'},
+  {t:'11:30', l:'Break / walk', y:'recovery', d:20},
+  {t:'11:50', l:'Personal biz — research', y:'deep', d:90, cat:'biz_research'},
+  {t:'13:20', l:'Break / walk', y:'recovery', d:20},
+  {t:'13:40', l:'Personal biz — action', y:'deep', d:80, cat:'biz_action'},
+  {t:'15:00', l:'Cook + eat lunch', y:'recovery', d:60},
+  {t:'16:00', l:'Language class (FR/DE/KR)', y:'lang', d:90, cat:'lang_class'},
+  {t:'17:30', l:'Prep Spanish class', y:'lang', d:30, cat:'spanish_prep'},
+  {t:'18:00', l:'Admin / flex', y:'admin', d:30, cat:'admin'},
+  {t:'18:30', l:'Dinner', y:'recovery', d:30},
+  {t:'19:00', l:'Spanish date w/ girlfriend', y:'relation', d:60},
+  ...NIGHT('20:00')];
+
+const FRIDAY_BASE = [...MORNING,
+  {t:'10:00', l:'Job applications', y:'deep', d:90, cat:'job'},
+  {t:'11:30', l:'Break / walk', y:'recovery', d:20},
+  {t:'11:50', l:'Econ markets — research', y:'deep', d:90, cat:'markets_research'},
+  {t:'13:20', l:'Break / walk', y:'recovery', d:20},
+  {t:'13:40', l:'Econ markets — action', y:'deep', d:80, cat:'markets_action'},
+  {t:'15:00', l:'Cook + eat lunch', y:'recovery', d:60},
+  {t:'16:00', l:'Language class (FR/DE/KR)', y:'lang', d:90, cat:'lang_class'},
+  {t:'17:30', l:'Admin / wrap week', y:'admin', d:45, cat:'admin'},
+  {t:'18:15', l:'Free buffer', y:'recovery', d:15},
+  {t:'18:30', l:'Dinner', y:'recovery', d:30},
+  {t:'19:00', l:'GF / date night', y:'relation', d:60},
+  ...NIGHT('20:00')];
+
+/* ============================================================
+   THREE SCHEDULE VARIANTS
+   ============================================================ */
+const SCHEDULE_VERSIONS = {
+  v7: {
+    name: 'Balanced (v7)',
+    tagline: 'Tool research on Thursday afternoon',
+    desc: 'Standard week. Thursday devotes 2h to work tool research; evenings stay open for GF time and recovery.',
+    highlights: ['Thu 4pm – Tool research (2h)', 'Tue afternoon – Budgeting + Admin', 'Wed afternoon – House + Grocery'],
+    week: [
+      MONDAY_BASE,
+      // Tuesday — DD + Budgeting + Admin
+      [...MORNING,
+        {t:'10:00', l:'Job applications', y:'deep', d:90, cat:'job'},
+        {t:'11:30', l:'Break / walk', y:'recovery', d:20},
+        {t:'11:50', l:'Due diligence — research', y:'deep', d:10, cat:'dd_research'},
+        {t:'12:00', l:'Investment meeting (fixed)', y:'fixed', d:60},
+        {t:'13:00', l:'Due diligence — action', y:'deep', d:90, cat:'dd_action'},
+        {t:'14:30', l:'Break / walk', y:'recovery', d:30},
+        {t:'15:00', l:'Cook + eat lunch', y:'recovery', d:60},
+        {t:'16:00', l:'Budgeting', y:'admin', d:60, cat:'budget'},
+        {t:'17:00', l:'Admin / flex', y:'admin', d:60, cat:'admin'},
+        {t:'18:00', l:'Free buffer', y:'recovery', d:30},
+        {t:'18:30', l:'Dinner', y:'recovery', d:30},
+        {t:'19:00', l:'Time with girlfriend', y:'relation', d:60},
+        ...NIGHT('20:00')],
+      // Wednesday — Personal biz + house + grocery
+      [...MORNING,
+        {t:'10:00', l:'Personal biz — action', y:'deep', d:90, cat:'biz_action'},
+        {t:'11:30', l:'Break / walk', y:'recovery', d:20},
+        {t:'11:50', l:'Personal biz — research', y:'deep', d:90, cat:'biz_research'},
+        {t:'13:20', l:'Break / walk', y:'recovery', d:20},
+        {t:'13:40', l:'Clean house / laundry', y:'admin', d:20, cat:'house'},
+        {t:'14:00', l:'Grocery shopping', y:'admin', d:60, cat:'grocery'},
+        {t:'15:00', l:'Cook + eat lunch', y:'recovery', d:60},
+        {t:'16:00', l:'Language class (FR/DE/KR)', y:'lang', d:90, cat:'lang_class'},
+        {t:'17:30', l:'Clean house / laundry', y:'admin', d:60, cat:'house'},
+        {t:'18:30', l:'Dinner', y:'recovery', d:30},
+        {t:'19:00', l:'Spanish date w/ girlfriend', y:'relation', d:60},
+        ...NIGHT('20:00')],
+      // Thursday — Tool research + recovery evening
+      [...MORNING,
+        {t:'10:00', l:'Job applications', y:'deep', d:90, cat:'job'},
+        {t:'11:30', l:'Break / walk', y:'recovery', d:20},
+        {t:'11:50', l:'Personal finances — research', y:'deep', d:90, cat:'fin_research'},
+        {t:'13:20', l:'Break / walk', y:'recovery', d:20},
+        {t:'13:40', l:'Personal finances — action', y:'deep', d:80, cat:'fin_action'},
+        {t:'15:00', l:'Cook + eat lunch', y:'recovery', d:60},
+        {t:'16:00', l:'Tool research (work)', y:'tools', d:90, cat:'tools'},
+        {t:'17:30', l:'Tool research (work) — wrap', y:'tools', d:30, cat:'tools'},
+        {t:'18:00', l:'Free buffer', y:'recovery', d:30},
+        {t:'18:30', l:'Dinner', y:'recovery', d:30},
+        {t:'19:00', l:'Time with girlfriend', y:'relation', d:60},
+        ...NIGHT('20:00')],
+      FRIDAY_BASE,
+    ]
+  },
+
+  v7b: {
+    name: 'Push Thursday (v7b)',
+    tagline: 'Bonus deep work in the evening',
+    desc: 'Same as v7, but Thursday evening adds 2h of personal-biz deep work. Sacrifices GF time and night exercise that day.',
+    highlights: ['Thu evening – +2h personal biz deep', 'No night exercise on Thursday', 'No GF time on Thursday'],
+    week: [
+      MONDAY_BASE,
+      // Tuesday — same as v7
+      [...MORNING,
+        {t:'10:00', l:'Job applications', y:'deep', d:90, cat:'job'},
+        {t:'11:30', l:'Break / walk', y:'recovery', d:20},
+        {t:'11:50', l:'Due diligence — research', y:'deep', d:10, cat:'dd_research'},
+        {t:'12:00', l:'Investment meeting (fixed)', y:'fixed', d:60},
+        {t:'13:00', l:'Due diligence — action', y:'deep', d:90, cat:'dd_action'},
+        {t:'14:30', l:'Break / walk', y:'recovery', d:30},
+        {t:'15:00', l:'Cook + eat lunch', y:'recovery', d:60},
+        {t:'16:00', l:'Budgeting', y:'admin', d:60, cat:'budget'},
+        {t:'17:00', l:'Admin / flex', y:'admin', d:60, cat:'admin'},
+        {t:'18:00', l:'Free buffer', y:'recovery', d:30},
+        {t:'18:30', l:'Dinner', y:'recovery', d:30},
+        {t:'19:00', l:'Time with girlfriend', y:'relation', d:60},
+        ...NIGHT('20:00')],
+      // Wednesday — same as v7
+      [...MORNING,
+        {t:'10:00', l:'Personal biz — action', y:'deep', d:90, cat:'biz_action'},
+        {t:'11:30', l:'Break / walk', y:'recovery', d:20},
+        {t:'11:50', l:'Personal biz — research', y:'deep', d:90, cat:'biz_research'},
+        {t:'13:20', l:'Break / walk', y:'recovery', d:20},
+        {t:'13:40', l:'Clean house / laundry', y:'admin', d:20, cat:'house'},
+        {t:'14:00', l:'Grocery shopping', y:'admin', d:60, cat:'grocery'},
+        {t:'15:00', l:'Cook + eat lunch', y:'recovery', d:60},
+        {t:'16:00', l:'Language class (FR/DE/KR)', y:'lang', d:90, cat:'lang_class'},
+        {t:'17:30', l:'Clean house / laundry', y:'admin', d:60, cat:'house'},
+        {t:'18:30', l:'Dinner', y:'recovery', d:30},
+        {t:'19:00', l:'Spanish date w/ girlfriend', y:'relation', d:60},
+        ...NIGHT('20:00')],
+      // Thursday — bonus deep work in evening
+      [...MORNING,
+        {t:'10:00', l:'Job applications', y:'deep', d:90, cat:'job'},
+        {t:'11:30', l:'Break / walk', y:'recovery', d:20},
+        {t:'11:50', l:'Personal finances — research', y:'deep', d:90, cat:'fin_research'},
+        {t:'13:20', l:'Break / walk', y:'recovery', d:20},
+        {t:'13:40', l:'Personal finances — action', y:'deep', d:80, cat:'fin_action'},
+        {t:'15:00', l:'Cook + eat lunch', y:'recovery', d:60},
+        {t:'16:00', l:'Tool research (work)', y:'tools', d:90, cat:'tools'},
+        {t:'17:30', l:'Tool research (work) — wrap', y:'tools', d:30, cat:'tools'},
+        {t:'18:00', l:'Free buffer', y:'recovery', d:30},
+        {t:'18:30', l:'Dinner', y:'recovery', d:30},
+        {t:'19:00', l:'Personal biz — deep (bonus)', y:'deep', d:90, cat:'biz_action'},
+        {t:'20:30', l:'Break / walk', y:'recovery', d:20},
+        {t:'20:50', l:'Personal biz — deep (bonus)', y:'deep', d:30, cat:'biz_action'},
+        {t:'21:20', l:'Wind-down buffer', y:'recovery', d:30},
+        {t:'21:50', l:'Reading', y:'read', d:30},
+        {t:'22:20', l:'Meditation', y:'mind', d:15}],
+      FRIDAY_BASE,
+    ]
+  },
+
+  v8: {
+    name: 'Errands Tuesday (v8)',
+    tagline: 'Tue/Wed errand swap',
+    desc: 'Tuesday afternoon becomes the errand block (grocery + house). Wednesday becomes a cleaner deep-work day with budgeting absorbed in.',
+    highlights: ['Tue 4pm – Grocery + house cleaning', 'Wed afternoon – Budgeting + admin', 'Wed evening freed up'],
+    week: [
+      MONDAY_BASE,
+      // Tuesday — errands replace budgeting
+      [...MORNING,
+        {t:'10:00', l:'Job applications', y:'deep', d:90, cat:'job'},
+        {t:'11:30', l:'Break / walk', y:'recovery', d:20},
+        {t:'11:50', l:'Due diligence — research', y:'deep', d:10, cat:'dd_research'},
+        {t:'12:00', l:'Investment meeting (fixed)', y:'fixed', d:60},
+        {t:'13:00', l:'Due diligence — action', y:'deep', d:90, cat:'dd_action'},
+        {t:'14:30', l:'Break / walk', y:'recovery', d:30},
+        {t:'15:00', l:'Cook + eat lunch', y:'recovery', d:60},
+        {t:'16:00', l:'Grocery shopping', y:'admin', d:60, cat:'grocery'},
+        {t:'17:00', l:'Clean house / laundry', y:'admin', d:90, cat:'house'},
+        {t:'18:30', l:'Dinner', y:'recovery', d:30},
+        {t:'19:00', l:'Time with girlfriend', y:'relation', d:60},
+        ...NIGHT('20:00')],
+      // Wednesday — clean deep work + budgeting
+      [...MORNING,
+        {t:'10:00', l:'Personal biz — action', y:'deep', d:90, cat:'biz_action'},
+        {t:'11:30', l:'Break / walk', y:'recovery', d:20},
+        {t:'11:50', l:'Personal biz — research', y:'deep', d:90, cat:'biz_research'},
+        {t:'13:20', l:'Break / walk', y:'recovery', d:20},
+        {t:'13:40', l:'Budgeting', y:'admin', d:60, cat:'budget'},
+        {t:'14:40', l:'Admin / flex', y:'admin', d:20, cat:'admin'},
+        {t:'15:00', l:'Cook + eat lunch', y:'recovery', d:60},
+        {t:'16:00', l:'Language class (FR/DE/KR)', y:'lang', d:90, cat:'lang_class'},
+        {t:'17:30', l:'Admin / flex', y:'admin', d:60, cat:'admin'},
+        {t:'18:30', l:'Dinner', y:'recovery', d:30},
+        {t:'19:00', l:'Spanish date w/ girlfriend', y:'relation', d:60},
+        ...NIGHT('20:00')],
+      // Thursday — same as v7
+      [...MORNING,
+        {t:'10:00', l:'Job applications', y:'deep', d:90, cat:'job'},
+        {t:'11:30', l:'Break / walk', y:'recovery', d:20},
+        {t:'11:50', l:'Personal finances — research', y:'deep', d:90, cat:'fin_research'},
+        {t:'13:20', l:'Break / walk', y:'recovery', d:20},
+        {t:'13:40', l:'Personal finances — action', y:'deep', d:80, cat:'fin_action'},
+        {t:'15:00', l:'Cook + eat lunch', y:'recovery', d:60},
+        {t:'16:00', l:'Tool research (work)', y:'tools', d:90, cat:'tools'},
+        {t:'17:30', l:'Tool research (work) — wrap', y:'tools', d:30, cat:'tools'},
+        {t:'18:00', l:'Free buffer', y:'recovery', d:30},
+        {t:'18:30', l:'Dinner', y:'recovery', d:30},
+        {t:'19:00', l:'Time with girlfriend', y:'relation', d:60},
+        ...NIGHT('20:00')],
+      FRIDAY_BASE,
+    ]
+  }
+};
+
+/* The currently-active variant key. WEEK is a getter that always returns the active week. */
+let activeVersion = 'v7';
+let WEEK = SCHEDULE_VERSIONS[activeVersion].week;
+
+const DAY_NAMES = ['Mon','Tue','Wed','Thu','Fri'];
+const DAY_DATES = ['13','14','15','16','17'];
+const TODAY_INDEX = 1; // Tuesday
+
+/* ================================================================
+   RENDER CALENDAR
+   ================================================================ */
+const cal = document.getElementById('cal');
+
+function renderCalendar(){
+  cal.innerHTML = '';
+  const PPM = pxPerMin();
+
+  // ROW 1: header — corner + 5 day cells
+  const corner = document.createElement('div');
+  corner.className = 'cal-head-corner';
+  cal.appendChild(corner);
+
+  DAY_NAMES.forEach((name, i) => {
+    const dh = document.createElement('div');
+    dh.className = 'cal-head-day' + (i === TODAY_INDEX ? ' today' : '');
+    dh.innerHTML = `
+      <div class="cal-head-name">${name}</div>
+      <div class="cal-head-num">${DAY_DATES[i]}</div>
+    `;
+    cal.appendChild(dh);
+  });
+
+  // ROW 2: body — gutter + 5 day cells
+  const gutter = document.createElement('div');
+  gutter.className = 'cal-body-cell cal-gutter';
+  // Time ticks at every full hour
+  for (let h = 6; h <= 24; h++){
+    const y = (h*60 - START_MIN) * PPM;
+    const tick = document.createElement('div');
+    tick.className = 'gutter-tick';
+    tick.style.top = y + 'px';
+    tick.textContent = (h === 24 ? 0 : h) + ':00';
+    gutter.appendChild(tick);
+  }
+  cal.appendChild(gutter);
+
+  // 5 day body cells
+  WEEK.forEach((day, di) => {
+    const cell = document.createElement('div');
+    cell.className = 'cal-body-cell';
+    cell.dataset.dayIndex = di;
+
+    // Hour grid lines (drawn inside the cell, so they're guaranteed to align)
+    for (let h = 6; h <= 24; h++){
+      const y = (h*60 - START_MIN) * PPM;
+      const line = document.createElement('div');
+      line.className = 'hour-line';
+      line.style.top = y + 'px';
+      cell.appendChild(line);
+      if (h < 24){
+        const half = document.createElement('div');
+        half.className = 'hour-line half';
+        half.style.top = (y + 30 * PPM) + 'px';
+        cell.appendChild(half);
+      }
+    }
+
+    // Blocks
+    day.forEach(b => {
+      if (!b.d) return;
+      const info = TY[b.y];
+      const top = (tm(b.t) - START_MIN) * PPM;
+      const height = b.d * PPM;
+
+      const el = document.createElement('div');
+      el.className = 'block';
+      el.dataset.cat = b.cat || '';
+      el.style.top = top + 'px';
+      el.style.height = height + 'px';
+      el.style.background = info.bg;
+      el.style.borderLeftColor = info.bd;
+      el.style.color = info.tx;
+      el.style.setProperty('--block-bg', info.bg);
+      el.style.setProperty('--block-bd', info.bd);
+
+      el.innerHTML = `
+        <div class="block-name">${b.l}</div>
+        ${height > 50 ? `<div class="block-time">${b.t} · ${fd(b.d)}</div>` : ''}
+        <div class="block-extra">
+          <div class="block-extra-row"><span class="block-extra-label">Time</span><span>${b.t} – ${fe(b.t, b.d)}</span></div>
+          <div class="block-extra-row"><span class="block-extra-label">Duration</span><span>${fd(b.d)}</span></div>
+          <div class="block-extra-row"><span class="block-extra-label">Type</span><span style="font-weight:500">${info.lb}</span></div>
+        </div>
+      `;
+      el.addEventListener('click', () => toggleExpand(el));
+      cell.appendChild(el);
+    });
+
+    cal.appendChild(cell);
+  });
+}
+
+function toggleExpand(el){
+  const wasExpanded = el.classList.contains('expanded');
+  document.querySelectorAll('.block.expanded').forEach(b => {
+    b.classList.remove('expanded');
+    if (b.dataset.origHeight) b.style.height = b.dataset.origHeight;
+  });
+  if (wasExpanded){
+    cal.classList.remove('has-expanded');
+    return;
+  }
+  el.dataset.origHeight = el.style.height;
+  const origH = parseFloat(el.style.height);
+  const newH = Math.max(180, origH * 1.5);
+  el.style.height = newH + 'px';
+  el.classList.add('expanded');
+  cal.classList.add('has-expanded');
+}
+
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.block')){
+    document.querySelectorAll('.block.expanded').forEach(b => {
+      b.classList.remove('expanded');
+      if (b.dataset.origHeight) b.style.height = b.dataset.origHeight;
+    });
+    cal.classList.remove('has-expanded');
+  }
+});
+
+/* ================================================================
+   STATS
+   ================================================================ */
+const statsRow = document.getElementById('statsRow');
+function renderStats(){
+  statsRow.innerHTML = '';
+  WEEK.forEach((day, i) => {
+    const total = day.filter(b => b.y === 'deep').reduce((s,b) => s+b.d, 0);
+    const h = Math.floor(total/60), m = total%60;
+    const el = document.createElement('div');
+    el.className = 'stat';
+    el.innerHTML = `
+      <div class="stat-label">${DAY_NAMES[i]}</div>
+      <div class="stat-value">${h}h${m ? ' '+m+'m' : ''}</div>
+      <div class="stat-sub">deep work</div>
+    `;
+    statsRow.appendChild(el);
+  });
+}
+renderStats();
+
+/* ================================================================
+   LEGEND
+   ================================================================ */
+const legend = document.getElementById('legend');
+Object.values(TY).forEach(info => {
+  const el = document.createElement('div');
+  el.className = 'leg';
+  el.innerHTML = `<div class="leg-sq" style="background:${info.bg};border:1px solid ${info.bd};--leg-bg:${info.bd}"></div><span>${info.lb}</span>`;
+  legend.appendChild(el);
+});
+
+/* ================================================================
+   NOTES PANEL
+   ================================================================ */
+const panel = document.getElementById('panel');
+const scrim = document.getElementById('scrim');
+const panelBody = document.getElementById('panelBody');
+const saveIndicator = document.getElementById('saveIndicator');
+
+let notesData = [];
+async function loadNotes(){
+  try {
+    if (window.storage){
+      const r = await window.storage.get('schedule:notes');
+      if (r && r.value) notesData = JSON.parse(r.value);
+    }
+  } catch(e){ notesData = []; }
+}
+let saveTimer = null;
+async function saveNotes(){
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(async () => {
+    try {
+      if (window.storage) await window.storage.set('schedule:notes', JSON.stringify(notesData));
+      flashSaved();
+    } catch(e){ console.error(e); }
+  }, 300);
+}
+function flashSaved(){
+  saveIndicator.classList.add('show');
+  setTimeout(() => saveIndicator.classList.remove('show'), 900);
+}
+function escapeHtml(s){
+  return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function formatNoteDate(ts){
+  if (!ts) return '';
+  const d = new Date(ts), now = new Date();
+  if (d.toDateString() === now.toDateString()){
+    return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+  }
+  return d.toLocaleDateString([], {month:'short', day:'numeric'});
+}
+function renderNotes(){
+  panelBody.innerHTML = '';
+  const composer = document.createElement('div');
+  composer.className = 'note-composer';
+  composer.innerHTML = `
+    <textarea id="noteInput" placeholder="Jot down a reminder…" rows="2"></textarea>
+    <button id="noteAddBtn">Add note</button>
+  `;
+  panelBody.appendChild(composer);
+
+  const sorted = [...notesData].sort((a, b) => {
+    if (a.pinned !== b.pinned) return b.pinned - a.pinned;
+    return (b.createdAt || 0) - (a.createdAt || 0);
+  });
+
+  if (sorted.length === 0){
+    const empty = document.createElement('div');
+    empty.className = 'notes-empty';
+    empty.innerHTML = `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      <div class="notes-empty-title">No notes yet</div>
+      <div class="notes-empty-sub">Add a reminder above — it'll save automatically.</div>
+    `;
+    panelBody.appendChild(empty);
+  } else {
+    const list = document.createElement('div');
+    list.className = 'notes-list';
+    sorted.forEach(n => {
+      const item = document.createElement('div');
+      item.className = 'note' + (n.pinned ? ' pinned' : '');
+      item.innerHTML = `
+        <div class="note-body">
+          <div class="note-text">${escapeHtml(n.text).replace(/\n/g, '<br>')}</div>
+          <div class="note-meta">
+            <span class="note-date">${formatNoteDate(n.createdAt)}</span>
+            ${n.pinned ? '<span class="note-pinned-label">Pinned</span>' : ''}
+          </div>
+        </div>
+        <div class="note-actions">
+          <button class="note-btn note-pin" data-id="${n.id}" aria-label="${n.pinned ? 'Unpin' : 'Pin'}" title="${n.pinned ? 'Unpin' : 'Pin'}">
+            <svg viewBox="0 0 24 24" fill="${n.pinned ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17v5"/><path d="M9 10.76V6a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v4.76a2 2 0 0 0 1.11 1.79l1.78.95A2 2 0 0 1 19 15.28V16a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-.72a2 2 0 0 1 1.11-1.78l1.78-.95A2 2 0 0 0 9 10.76Z"/></svg>
+          </button>
+          <button class="note-btn note-delete" data-id="${n.id}" aria-label="Delete">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
+          </button>
+        </div>
+      `;
+      list.appendChild(item);
+    });
+    panelBody.appendChild(list);
+  }
+
+  const input = document.getElementById('noteInput');
+  const addBtn = document.getElementById('noteAddBtn');
+  const submit = () => {
+    const v = input.value.trim();
+    if (!v) return;
+    notesData.push({
+      id: 'n_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
+      text: v, pinned: false, createdAt: Date.now()
+    });
+    input.value = '';
+    saveNotes(); renderNotes();
+    setTimeout(() => { const ni = document.getElementById('noteInput'); if (ni) ni.focus(); }, 0);
+  };
+  addBtn.addEventListener('click', submit);
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)){ e.preventDefault(); submit(); }
+  });
+}
+async function openNotes(){
+  renderNotes();
+  panel.classList.add('open');
+  scrim.classList.add('open');
+  panel.setAttribute('aria-hidden', 'false');
+  setTimeout(() => { const ni = document.getElementById('noteInput'); if (ni) ni.focus(); }, 200);
+}
+function closeNotes(){
+  panel.classList.remove('open');
+  scrim.classList.remove('open');
+  panel.setAttribute('aria-hidden', 'true');
+}
+document.getElementById('openNotes').addEventListener('click', openNotes);
+document.getElementById('closePanel').addEventListener('click', closeNotes);
+scrim.addEventListener('click', closeNotes);
+panelBody.addEventListener('click', e => {
+  const pin = e.target.closest('.note-pin');
+  if (pin){
+    const n = notesData.find(x => x.id === pin.dataset.id);
+    if (n){ n.pinned = !n.pinned; saveNotes(); renderNotes(); }
+    return;
+  }
+  const del = e.target.closest('.note-delete');
+  if (del){
+    notesData = notesData.filter(x => x.id !== del.dataset.id);
+    saveNotes(); renderNotes();
+  }
+});
+
+/* ================================================================
+   TOPICS
+   ================================================================ */
+const TOPIC_GROUPS = [
+  {label:'Career', full:true, items:[{key:'job', name:'Job Applications', color:TY.deep.bd}]},
+  {label:'Personal Business', items:[
+    {key:'biz_research', name:'Personal Biz — Research', color:TY.deep.bd},
+    {key:'biz_action',   name:'Personal Biz — Action',   color:TY.deep.bd},
+  ]},
+  {label:'Due Diligence', items:[
+    {key:'dd_research', name:'Due Diligence — Research', color:TY.deep.bd},
+    {key:'dd_action',   name:'Due Diligence — Action',   color:TY.deep.bd},
+  ]},
+  {label:'Personal Finances', items:[
+    {key:'fin_research', name:'Finances — Research', color:TY.deep.bd},
+    {key:'fin_action',   name:'Finances — Action',   color:TY.deep.bd},
+  ]},
+  {label:'Econ Markets', items:[
+    {key:'markets_research', name:'Markets — Research', color:TY.deep.bd},
+    {key:'markets_action',   name:'Markets — Action',   color:TY.deep.bd},
+  ]},
+  {label:'Languages', items:[
+    {key:'lang_class',   name:'Language Class', color:TY.lang.bd},
+    {key:'spanish_prep', name:'Prep Spanish',   color:TY.lang.bd},
+  ]},
+  {label:'Household', items:[
+    {key:'house',   name:'House / Laundry',   color:TY.admin.bd},
+    {key:'grocery', name:'Grocery Shopping', color:TY.admin.bd},
+  ]},
+  {label:'Work Tools', full:true, items:[{key:'tools', name:'Tool Research', color:TY.tools.bd}]},
+  {label:'Money',      full:true, items:[{key:'budget', name:'Budgeting', color:TY.admin.bd}]},
+  {label:'Free Time',  full:true, items:[{key:'admin', name:'Admin / Flex', color:TY.admin.bd}]},
+];
+const TOPIC_CATEGORIES = TOPIC_GROUPS.flatMap(g => g.items);
+
+const topicsModal = document.getElementById('topicsModal');
+const topicsScrim = document.getElementById('topicsScrim');
+const topicGroupsEl = document.getElementById('topicGroups');
+const topicDetailModal = document.getElementById('topicDetailModal');
+const topicDetailScrim = document.getElementById('topicDetailScrim');
+const topicDetailDot = document.getElementById('topicDetailDot');
+const topicDetailName = document.getElementById('topicDetailName');
+const topicListEl = document.getElementById('topicList');
+const topicInput = document.getElementById('topicInput');
+const topicAddBtn = document.getElementById('topicAddBtn');
+
+let topicsData = {};
+let activeTopicCat = null;
+
+async function loadTopics(){
+  try {
+    if (window.storage){
+      const r = await window.storage.get('schedule:topics');
+      if (r && r.value) topicsData = JSON.parse(r.value);
+    }
+  } catch(e){ topicsData = {}; }
+  TOPIC_CATEGORIES.forEach(c => { if (!topicsData[c.key]) topicsData[c.key] = []; });
+}
+let topicsSaveTimer = null;
+async function saveTopics(){
+  clearTimeout(topicsSaveTimer);
+  topicsSaveTimer = setTimeout(async () => {
+    try {
+      if (window.storage) await window.storage.set('schedule:topics', JSON.stringify(topicsData));
+      flashSaved();
+    } catch(e){ console.error(e); }
+  }, 300);
+}
+function renderTopicGroups(){
+  topicGroupsEl.innerHTML = '';
+  TOPIC_GROUPS.forEach(group => {
+    const ge = document.createElement('div');
+    ge.className = 'topic-group';
+    const lbl = document.createElement('div');
+    lbl.className = 'topic-group-label';
+    lbl.textContent = group.label;
+    ge.appendChild(lbl);
+    const row = document.createElement('div');
+    row.className = 'topic-group-row' + (group.full ? ' topic-group-row-full' : '');
+    group.items.forEach(cat => {
+      const items = topicsData[cat.key] || [];
+      const btn = document.createElement('button');
+      btn.className = 'topic-cat-btn';
+      btn.style.borderLeftColor = cat.color;
+      btn.dataset.key = cat.key;
+      btn.innerHTML = `
+        <div class="topic-cat-name">${cat.name}</div>
+        <div class="topic-cat-count">${items.length} topic${items.length === 1 ? '' : 's'}</div>
+      `;
+      btn.addEventListener('click', () => openTopicDetail(cat.key));
+      row.appendChild(btn);
+    });
+    ge.appendChild(row);
+    topicGroupsEl.appendChild(ge);
+  });
+}
+function renderTopicList(){
+  if (!activeTopicCat) return;
+  const items = topicsData[activeTopicCat] || [];
+  topicListEl.innerHTML = '';
+  if (items.length === 0){
+    const empty = document.createElement('div');
+    empty.className = 'topic-empty';
+    empty.textContent = 'No topics yet. Add one below.';
+    topicListEl.appendChild(empty);
+  } else {
+    items.forEach(t => {
+      const item = document.createElement('div');
+      item.className = 'topic-item';
+      item.innerHTML = `
+        <div class="topic-item-text">${escapeHtml(t.text)}</div>
+        <button class="topic-item-delete" data-id="${t.id}" aria-label="Delete">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
+        </button>
+      `;
+      topicListEl.appendChild(item);
+    });
+  }
+}
+function openTopicDetail(catKey){
+  const cat = TOPIC_CATEGORIES.find(c => c.key === catKey);
+  if (!cat) return;
+  activeTopicCat = catKey;
+  topicDetailDot.style.background = cat.color;
+  topicDetailName.textContent = cat.name;
+  renderTopicList();
+  topicDetailModal.classList.add('open');
+  topicDetailScrim.classList.add('open');
+  topicDetailModal.setAttribute('aria-hidden', 'false');
+  setTimeout(() => topicInput.focus(), 100);
+}
+function closeTopicDetail(){
+  topicDetailModal.classList.remove('open');
+  topicDetailScrim.classList.remove('open');
+  topicDetailModal.setAttribute('aria-hidden', 'true');
+  renderTopicGroups();
+  activeTopicCat = null;
+}
+function openTopicsModal(){
+  renderTopicGroups();
+  topicsModal.classList.add('open');
+  topicsScrim.classList.add('open');
+  topicsModal.setAttribute('aria-hidden', 'false');
+}
+function closeTopicsModal(){
+  if (topicDetailModal.classList.contains('open')) closeTopicDetail();
+  topicsModal.classList.remove('open');
+  topicsScrim.classList.remove('open');
+  topicsModal.setAttribute('aria-hidden', 'true');
+}
+document.getElementById('openTopics').addEventListener('click', openTopicsModal);
+document.getElementById('closeTopics').addEventListener('click', closeTopicsModal);
+document.getElementById('closeTopicDetail').addEventListener('click', closeTopicDetail);
+topicsScrim.addEventListener('click', closeTopicsModal);
+topicDetailScrim.addEventListener('click', closeTopicDetail);
+
+function addTopic(){
+  if (!activeTopicCat) return;
+  const v = topicInput.value.trim();
+  if (!v) return;
+  if (!topicsData[activeTopicCat]) topicsData[activeTopicCat] = [];
+  topicsData[activeTopicCat].push({
+    id: 'tp_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
+    text: v
+  });
+  topicInput.value = '';
+  saveTopics(); renderTopicList();
+  topicInput.focus();
+}
+topicAddBtn.addEventListener('click', addTopic);
+topicInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter'){ e.preventDefault(); addTopic(); }
+});
+topicListEl.addEventListener('click', e => {
+  const del = e.target.closest('.topic-item-delete');
+  if (!del || !activeTopicCat) return;
+  topicsData[activeTopicCat] = topicsData[activeTopicCat].filter(t => t.id !== del.dataset.id);
+  saveTopics(); renderTopicList();
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  if (topicDetailModal.classList.contains('open')) closeTopicDetail();
+  else if (topicsModal.classList.contains('open')) closeTopicsModal();
+});
+
+/* ================================================================
+   VERSIONS MODAL
+   ================================================================ */
+const versionsModal = document.getElementById('versionsModal');
+const versionsScrim = document.getElementById('versionsScrim');
+const versionListEl = document.getElementById('versionList');
+
+async function loadActiveVersion(){
+  try {
+    if (window.storage){
+      const r = await window.storage.get('schedule:activeVersion');
+      if (r && r.value && SCHEDULE_VERSIONS[r.value]) activeVersion = r.value;
+    }
+  } catch(e){}
+  WEEK = SCHEDULE_VERSIONS[activeVersion].week;
+}
+
+async function setActiveVersion(key){
+  if (!SCHEDULE_VERSIONS[key]) return;
+  activeVersion = key;
+  WEEK = SCHEDULE_VERSIONS[activeVersion].week;
+  renderCalendar();
+  renderStats();
+  try { if (window.storage) await window.storage.set('schedule:activeVersion', key); } catch(e){}
+  flashSaved();
+  renderVersionList();
+}
+
+function renderVersionList(){
+  versionListEl.innerHTML = '';
+  Object.entries(SCHEDULE_VERSIONS).forEach(([key, v]) => {
+    const card = document.createElement('button');
+    card.className = 'version-card' + (key === activeVersion ? ' active' : '');
+    card.dataset.key = key;
+    card.innerHTML = `
+      <div class="version-card-head">
+        <div class="version-card-title">${v.name}</div>
+        <span class="version-card-badge">Active</span>
+      </div>
+      <div class="version-card-tagline">${v.tagline}</div>
+      <div class="version-card-desc">${v.desc}</div>
+      <div class="version-card-highlights">
+        ${v.highlights.map(h => `<div class="version-card-highlight">${h}</div>`).join('')}
+      </div>
+    `;
+    card.addEventListener('click', () => {
+      setActiveVersion(key);
+      setTimeout(closeVersionsModal, 200);
+    });
+    versionListEl.appendChild(card);
+  });
+}
+
+function openVersionsModal(){
+  renderVersionList();
+  versionsModal.classList.add('open');
+  versionsScrim.classList.add('open');
+  versionsModal.setAttribute('aria-hidden', 'false');
+}
+function closeVersionsModal(){
+  versionsModal.classList.remove('open');
+  versionsScrim.classList.remove('open');
+  versionsModal.setAttribute('aria-hidden', 'true');
+}
+document.getElementById('openVersions').addEventListener('click', openVersionsModal);
+document.getElementById('closeVersions').addEventListener('click', closeVersionsModal);
+versionsScrim.addEventListener('click', closeVersionsModal);
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && versionsModal.classList.contains('open')) closeVersionsModal();
+});
+
+/* ================================================================
+   THEME
+   ================================================================ */
+const themeBtn = document.getElementById('toggleTheme');
+const iconMoon = document.getElementById('iconMoon');
+const iconSun = document.getElementById('iconSun');
+function applyTheme(t){
+  document.documentElement.setAttribute('data-theme', t);
+  iconMoon.style.display = (t === 'dark') ? 'none' : 'block';
+  iconSun.style.display  = (t === 'dark') ? 'block' : 'none';
+}
+async function loadTheme(){
+  try {
+    if (window.storage){
+      const r = await window.storage.get('schedule:theme');
+      if (r && r.value){ applyTheme(r.value); return; }
+    }
+  } catch(e){}
+  applyTheme(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+}
+themeBtn.addEventListener('click', async () => {
+  const cur = document.documentElement.getAttribute('data-theme') || 'light';
+  const next = cur === 'dark' ? 'light' : 'dark';
+  applyTheme(next);
+  try { if (window.storage) await window.storage.set('schedule:theme', next); } catch(e){}
+});
+
+/* ================================================================
+   INIT
+   ================================================================ */
+// Render calendar IMMEDIATELY (synchronously) so it appears even
+// if async storage operations hang or fail.
+applyTheme(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+renderCalendar();
+
+// Re-render on resize so any responsive change to --hour-px is honored
+let rzTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(rzTimer);
+  rzTimer = setTimeout(renderCalendar, 150);
+});
+
+// Load persisted state in the background (theme override + notes + topics + version)
+(async () => {
+  try { await loadTheme(); } catch(e){ console.warn('theme load failed', e); }
+  try { await loadNotes(); } catch(e){ console.warn('notes load failed', e); }
+  try { await loadTopics(); } catch(e){ console.warn('topics load failed', e); }
+  try {
+    const before = activeVersion;
+    await loadActiveVersion();
+    if (activeVersion !== before){
+      renderCalendar();
+      renderStats();
+    }
+  } catch(e){ console.warn('version load failed', e); }
+  // Seed example topics on first ever load
+  if (topicsData.biz_action && topicsData.biz_action.length === 0){
+    topicsData.biz_action = [
+      {id:'tp_seed_1', text:'Onigiri business'},
+      {id:'tp_seed_2', text:'Santiago business'},
+      {id:'tp_seed_3', text:'Freelance page'},
+      {id:'tp_seed_4', text:'Water project'},
+    ];
+    try { await saveTopics(); } catch(e){}
+  }
+})();
+</script>
+
+</body>
+</html>
