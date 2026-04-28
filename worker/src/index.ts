@@ -1,15 +1,8 @@
 import { Hono } from 'hono';
-import { cors } from 'hono/cors';
 
-type Env = { DB: D1Database; ALLOWED_ORIGIN: string };
+type Env = { DB: D1Database };
 
 const app = new Hono<{ Bindings: Env }>();
-
-// CORS — only allow the configured origin
-app.use('*', async (c, next) => {
-  const middleware = cors({ origin: c.env.ALLOWED_ORIGIN, allowMethods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'] });
-  return middleware(c, next);
-});
 
 const MAX_TEXT = 5000;
 const newId = (prefix: string) => `${prefix}_${Date.now().toString(36)}_${crypto.randomUUID().slice(0, 8)}`;

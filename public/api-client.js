@@ -1,7 +1,5 @@
-const API_BASE = 'https://weekly-schedule-api.daniel-chavez200326.workers.dev';
-
 async function api(path, opts = {}) {
-  const res = await fetch(API_BASE + path, {
+  const res = await fetch(path, {
     ...opts,
     headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) }
   });

@@ -1,4 +1,4 @@
-const CACHE = 'schedule-v1';
+const CACHE = 'schedule-v2';
 const APP_SHELL = ['/', '/index.html', '/app.js', '/styles.css', '/api-client.js', '/manifest.json'];
 
 self.addEventListener('install', e => {
@@ -13,6 +13,7 @@ self.addEventListener('activate', e => {
 });
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
-  if (url.origin !== self.location.origin) return; // never cache cross-origin (the API)
+  if (url.origin !== self.location.origin) return;
+  if (url.pathname.startsWith('/api/')) return; // never cache the API
   e.respondWith(caches.match(e.request).then(r => r || fetch(e.request)));
 });

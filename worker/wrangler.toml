@@ -2,10 +2,10 @@ name = "weekly-schedule-api"
 main = "src/index.ts"
 compatibility_date = "2025-01-01"
 
+[assets]
+directory = "../public"
+
 [[d1_databases]]
 binding = "DB"
 database_name = "weekly-schedule-db"
 database_id = "b0d4c4bc-1fc0-4201-a16d-f467ae3d883b"
-
-[vars]
-ALLOWED_ORIGIN = "https://horariotemporal.daniel-chavez200326.workers.dev"
