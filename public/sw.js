@@ -1,4 +1,4 @@
-const CACHE = 'schedule-v2';
+const CACHE = 'schedule-v3';
 const APP_SHELL = ['/', '/index.html', '/app.js', '/styles.css', '/api-client.js', '/manifest.json'];
 
 self.addEventListener('install', e => {
