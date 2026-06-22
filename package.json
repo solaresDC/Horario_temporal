@@ -4,6 +4,10 @@
   "private": true,
   "description": "Personal weekly schedule PWA",
   "devDependencies": {
-    "wrangler": "^4.85.0"
+    "wrangler": "^4.86.0"
+  },
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "preview": "wrangler dev"
   }
 }
